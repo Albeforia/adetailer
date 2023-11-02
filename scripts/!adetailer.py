@@ -739,10 +739,12 @@ class AfterDetailerScript(scripts.Script):
             # [MOD Albeforia] Crop images by bounding boxes
             if makeup_enabled:
                 area = (bound_rects[j][0], bound_rects[j][1], bound_rects[j][0]+bound_rects[j][2], bound_rects[j][1]+bound_rects[j][3])
+                best_size = max(256, min(512, 16 * (max(bound_rects[j][2], bound_rects[j][3]) // 16)))
                 cropped_images.append(processed.images[0].crop(area))
                 cropped_image_path = os.path.join(STATIC_TEMP_PATH, 'ad_crop.png')
                 cropped_images[j].save(cropped_image_path)
-                output_dir = makeup_transfer(STATIC_TEMP_PATH, cropped_image_path, args.ad_makeup_template)
+                print(f"Makeup transfer with size {best_size}")
+                output_dir = makeup_transfer(STATIC_TEMP_PATH, cropped_image_path, args.ad_makeup_template, size=best_size)
                 output_image = Image.open(os.path.join(output_dir, 'out.png'))
                 processed.images[0].paste(output_image, area)
 
