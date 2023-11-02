@@ -642,6 +642,26 @@ class AfterDetailerScript(scripts.Script):
         else:
             p._ad_disabled = True
 
+    def _blend_images_with_rect(self, A, B, rect, N):
+        edge_mask = np.zeros(A.shape, dtype=np.float)
+
+        for i in range(N+1):
+            new_rect = (
+                rect[0] + i,
+                rect[1] + i,
+                rect[2] - 2 * i,
+                rect[3] - 2 * i
+            )
+            v = i * (1 / N)
+            cv2.rectangle(edge_mask, new_rect[:2], (new_rect[0] + new_rect[2], new_rect[1] + new_rect[3]),
+                          (v,v,v), -1)
+
+        # edge_mask_img = Image.fromarray(edge_mask)
+        # edge_mask_img.save(os.path.join(STATIC_TEMP_PATH, 'ad_edge_mask.png'))
+
+        blended = B * edge_mask + A * (1 - edge_mask)
+        return blended.astype(np.uint8)
+
     def _postprocess_image_inner(
         self, p, pp, args: ADetailerArgs, *, n: int = 0
     ) -> bool:
@@ -746,7 +766,14 @@ class AfterDetailerScript(scripts.Script):
                 print(f"Makeup transfer with size {best_size}")
                 output_dir = makeup_transfer(STATIC_TEMP_PATH, cropped_image_path, args.ad_makeup_template, size=best_size)
                 output_image = Image.open(os.path.join(output_dir, 'out.png'))
+                original = processed.images[0].copy()
                 processed.images[0].paste(output_image, area)
+                processed.images[0] = Image.fromarray(
+                    self._blend_images_with_rect(
+                        np.array(original, dtype=float), np.array(processed.images[0], dtype=float),
+                        bound_rects[j], args.ad_makeup_edge_smoothing
+                    )
+                )
 
         if processed is not None:
             pp.image = processed.images[0]

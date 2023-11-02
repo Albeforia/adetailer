@@ -219,6 +219,13 @@ def one_ui_group(n: int, is_img2img: bool, webui_info: WebuiInfo):
                 type="filepath",
                 elem_id=eid("ad_makeup_template"),
             )
+            w.ad_makeup_edge_smoothing = gr.Slider(
+                label="Makeup Edge Smoothing",
+                minimum=1,
+                maximum=50,
+                value=30,
+                elem_id=eid("ad_makeup_edge_smoothing"),
+            )
 
     all_inputs = [state, *w.tolist()]
     target_button = webui_info.i2i_button if is_img2img else webui_info.t2i_button

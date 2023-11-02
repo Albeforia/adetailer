@@ -78,6 +78,7 @@ class ADetailerArgs(BaseModel, extra=Extra.forbid):
     # [ADD Albeforia] Add corresponding UI args
     ad_makeup_enable: bool = False
     ad_makeup_template: Optional[str] = None
+    ad_makeup_edge_smoothing: PositiveInt = 30
     is_api: bool = True
 
     @validator("is_api", pre=True)
@@ -222,6 +223,7 @@ _all_args = [
     # [ADD Albeforia] Add corresponding UI args
     ("ad_makeup_enable", "ADetailer enable makeup"),
     ("ad_makeup_template", "ADetailer makeup template"),
+    ("ad_makeup_edge_smoothing", "ADetailer makeup edge smoothing"),
 ]
 
 _args = [Arg(*args) for args in _all_args]
