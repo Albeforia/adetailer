@@ -12,7 +12,9 @@ from pathlib import Path
 from textwrap import dedent
 from typing import Any, NamedTuple
 
+import cv2
 import gradio as gr
+import numpy as np
 import torch
 from rich import print
 
@@ -50,6 +52,10 @@ from modules.processing import (
 )
 from modules.sd_samplers import all_samplers
 from modules.shared import cmd_opts, opts, state
+
+from MakeupTransfer import inference as makeup_transfer
+from scripts.shared_paths import STATIC_TEMP_PATH
+from PIL import Image
 
 no_huggingface = getattr(cmd_opts, "ad_no_huggingface", False)
 adetailer_dir = Path(models_path, "adetailer")
@@ -561,13 +567,13 @@ class AfterDetailerScript(scripts.Script):
         )
         pred = filter_k_largest(pred, k=args.ad_mask_k_largest)
         pred = self.sort_bboxes(pred)
-        return mask_preprocess(
+        return (mask_preprocess(
             pred.masks,
             kernel=args.ad_dilate_erode,
             x_offset=args.ad_x_offset,
             y_offset=args.ad_y_offset,
             merge_invert=args.ad_mask_merge_invert,
-        )
+        ), pred)
 
     @staticmethod
     def ensure_rgb_image(image: Any):
@@ -670,7 +676,7 @@ class AfterDetailerScript(scripts.Script):
         with change_torch_load():
             pred = predictor(ad_model, pp.image, args.ad_confidence, **kwargs)
 
-        masks = self.pred_preprocessing(pred, args)
+        masks, new_pred = self.pred_preprocessing(pred, args)
         shared.state.assign_current_image(pred.preview)
 
         if not masks:
@@ -694,8 +700,20 @@ class AfterDetailerScript(scripts.Script):
             print(f"mediapipe: {steps} detected.")
 
         p2 = copy(i2i)
+        # [MOD Albeforia] Find bounding boxes from processes masks
+        makeup_enabled = args.ad_makeup_enable and args.ad_makeup_template
+        bound_rects = []
+        cropped_images = []
         for j in range(steps):
+            # bb = new_pred.bboxes[j]     # [x1, y1, x2, y2]
+            # print(bb)
             p2.image_mask = masks[j]
+
+            # [MOD Albeforia] Find bounding boxes from processes masks
+            if makeup_enabled:
+                contours, _ = cv2.findContours(np.array(masks[j]), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+                bound_rects.append(cv2.boundingRect(contours[0]))   # x, y, w, h = boundRect
+
             p2.init_images[0] = self.ensure_rgb_image(p2.init_images[0])
             self.i2i_prompts_replace(p2, ad_prompts, ad_negatives, j)
 
@@ -717,6 +735,16 @@ class AfterDetailerScript(scripts.Script):
             self.compare_prompt(p2, processed, n=n)
             p2 = copy(i2i)
             p2.init_images = [processed.images[0]]
+
+            # [MOD Albeforia] Crop images by bounding boxes
+            if makeup_enabled:
+                area = (bound_rects[j][0], bound_rects[j][1], bound_rects[j][0]+bound_rects[j][2], bound_rects[j][1]+bound_rects[j][3])
+                cropped_images.append(processed.images[0].crop(area))
+                cropped_image_path = os.path.join(STATIC_TEMP_PATH, 'ad_crop.png')
+                cropped_images[j].save(cropped_image_path)
+                output_dir = makeup_transfer(STATIC_TEMP_PATH, cropped_image_path, args.ad_makeup_template)
+                output_image = Image.open(os.path.join(output_dir, 'out.png'))
+                processed.images[0].paste(output_image, area)
 
         if processed is not None:
             pp.image = processed.images[0]

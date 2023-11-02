@@ -201,6 +201,25 @@ def one_ui_group(n: int, is_img2img: bool, webui_info: WebuiInfo):
     with gr.Group():
         controlnet(w, n, is_img2img)
 
+    # [MOD Albeforia] Add UI for makeup
+    with gr.Group():
+        with gr.Accordion(
+                "Makeup",
+                open=False,
+                elem_id=eid("ad_makeup_accordion"),
+        ):
+            w.ad_makeup_enable = gr.Checkbox(
+                label="Enable",
+                value=False,
+                elem_id=eid("ad_makeup_enable"),
+            )
+            w.ad_makeup_template = gr.Image(
+                label="Makeup Template",
+                value=None,
+                type="filepath",
+                elem_id=eid("ad_makeup_template"),
+            )
+
     all_inputs = [state, *w.tolist()]
     target_button = webui_info.i2i_button if is_img2img else webui_info.t2i_button
     target_button.click(
