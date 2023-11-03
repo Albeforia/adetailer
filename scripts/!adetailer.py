@@ -723,6 +723,7 @@ class AfterDetailerScript(scripts.Script):
 
         p2 = copy(i2i)
         # [MOD Albeforia] Find bounding boxes from processes masks
+        os.makedirs(STATIC_TEMP_PATH, exist_ok=True)
         makeup_enabled = args.ad_makeup_enable and args.ad_makeup_template
         bound_rects = []
         cropped_images = []
