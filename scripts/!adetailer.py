@@ -53,9 +53,11 @@ from modules.processing import (
 from modules.sd_samplers import all_samplers
 from modules.shared import cmd_opts, opts, state
 
-from MakeupTransfer import inference as makeup_transfer
-from scripts.shared_paths import STATIC_TEMP_PATH
+# [ADD Albeforia]
 from PIL import Image
+from MakeupTransfer import inference as makeup_transfer
+from modules.paths_internal import script_path
+STATIC_TEMP_PATH = os.path.join(script_path, "tmp")
 
 no_huggingface = getattr(cmd_opts, "ad_no_huggingface", False)
 adetailer_dir = Path(models_path, "adetailer")
