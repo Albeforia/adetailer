@@ -222,7 +222,7 @@ def one_ui_group(n: int, is_img2img: bool, webui_info: WebuiInfo):
             with gr.Row():
                 w.ad_makeup_network_size = gr.Slider(
                     label="Makeup Network Size",
-                    minimum=224,
+                    minimum=128,
                     maximum=512,
                     step=16,
                     value=288,
