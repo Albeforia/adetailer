@@ -726,7 +726,20 @@ class AfterDetailerScript(scripts.Script):
         os.makedirs(STATIC_TEMP_PATH, exist_ok=True)
         makeup_enabled = args.ad_makeup_enable and args.ad_makeup_template
         bound_rects = []
+        bound_rects_squared = []    # SSAT needs squared input
         cropped_images = []
+
+        def expand_rect_to_square(rect):
+            x, y, w, h = rect
+            center_x = x + w / 2
+            center_y = y + h / 2
+            size = max(w, h)
+            new_x = center_x - size / 2
+            new_y = center_y - size / 2
+            new_x = round(new_x)
+            new_y = round(new_y)
+            return [new_x, new_y, size, size]
+
         for j in range(steps):
             # bb = new_pred.bboxes[j]     # [x1, y1, x2, y2]
             # print(bb)
@@ -736,6 +749,7 @@ class AfterDetailerScript(scripts.Script):
             if makeup_enabled:
                 contours, _ = cv2.findContours(np.array(masks[j]), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
                 bound_rects.append(cv2.boundingRect(contours[0]))   # x, y, w, h = boundRect
+                bound_rects_squared.append(expand_rect_to_square(bound_rects[j]))
 
             p2.init_images[0] = self.ensure_rgb_image(p2.init_images[0])
             self.i2i_prompts_replace(p2, ad_prompts, ad_negatives, j)
@@ -761,8 +775,9 @@ class AfterDetailerScript(scripts.Script):
 
             # [MOD Albeforia] Crop images by bounding boxes
             if makeup_enabled:
-                area = (bound_rects[j][0], bound_rects[j][1], bound_rects[j][0]+bound_rects[j][2], bound_rects[j][1]+bound_rects[j][3])
-                best_size = max(256, min(512, 16 * (max(bound_rects[j][2], bound_rects[j][3]) // 16)))
+                area = (bound_rects_squared[j][0], bound_rects_squared[j][1], bound_rects_squared[j][0]+bound_rects_squared[j][2], bound_rects_squared[j][1]+bound_rects_squared[j][3])
+                # best_size = max( 256, min(512, 16 * (bound_rects_squared[j][2] // 16)) )
+                best_size = 288
                 cropped_images.append(processed.images[0].crop(area))
                 cropped_image_path = os.path.join(STATIC_TEMP_PATH, 'ad_crop.png')
                 cropped_images[j].save(cropped_image_path)
@@ -770,7 +785,7 @@ class AfterDetailerScript(scripts.Script):
                 output_dir = makeup_transfer(STATIC_TEMP_PATH, cropped_image_path, args.ad_makeup_template, size=best_size)
                 output_image = Image.open(os.path.join(output_dir, 'out.png'))
                 original = processed.images[0].copy()
-                processed.images[0].paste(output_image, area)
+                processed.images[0].paste(output_image, area)   # paste back
                 processed.images[0] = Image.fromarray(
                     self._blend_images_with_rect(
                         np.array(original, dtype=float), np.array(processed.images[0], dtype=float),
