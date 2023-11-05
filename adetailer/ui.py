@@ -208,11 +208,17 @@ def one_ui_group(n: int, is_img2img: bool, webui_info: WebuiInfo):
                 open=False,
                 elem_id=eid("ad_makeup_accordion"),
         ):
-            w.ad_makeup_enable = gr.Checkbox(
-                label="Enable",
-                value=False,
-                elem_id=eid("ad_makeup_enable"),
-            )
+            with gr.Row():
+                w.ad_makeup_enable = gr.Checkbox(
+                    label="Enable",
+                    value=False,
+                    elem_id=eid("ad_makeup_enable"),
+                )
+                w.ad_makeup_tint = gr.ColorPicker(
+                    label="Makeup Tint",
+                    value="#ffffff",
+                    elem_id=eid("ad_makeup_tint"),
+                )
             w.ad_makeup_template = gr.Image(
                 label="Makeup Template",
                 value=None,

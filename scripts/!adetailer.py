@@ -664,6 +664,15 @@ class AfterDetailerScript(scripts.Script):
         blended = B * edge_mask + A * (1 - edge_mask)
         return blended.astype(np.uint8)
 
+    def _tint_image(self, img_path, tint):
+        img = cv2.imread(img_path).astype(np.float32)
+
+        tint = tint.lstrip("#")
+        tint_bgr = np.array([int(tint[i:i + 2], 16) for i in (4, 2, 0)], dtype=np.float32)
+
+        img = (img * (tint_bgr / 255)).clip(0, 255).astype(np.uint8)
+        return img
+
     def _postprocess_image_inner(
         self, p, pp, args: ADetailerArgs, *, n: int = 0
     ) -> bool:
@@ -783,9 +792,13 @@ class AfterDetailerScript(scripts.Script):
                 cropped_images[j].save(cropped_image_path)
                 print(f"Makeup transfer with size {best_size}")
                 output_dir = makeup_transfer(STATIC_TEMP_PATH, cropped_image_path, args.ad_makeup_template, size=best_size)
-                output_image = Image.open(os.path.join(output_dir, 'out.png'))
+                # output_image = Image.open(os.path.join(output_dir, 'out.png'))
+                output_image = cv2.cvtColor(
+                    self._tint_image(os.path.join(output_dir, 'out.png'), args.ad_makeup_tint),
+                    cv2.COLOR_BGR2RGB
+                )
                 original = processed.images[0].copy()
-                processed.images[0].paste(output_image, area)   # paste back
+                processed.images[0].paste(Image.fromarray(output_image), area)   # paste back
                 processed.images[0] = Image.fromarray(
                     self._blend_images_with_rect(
                         np.array(original, dtype=float), np.array(processed.images[0], dtype=float),
