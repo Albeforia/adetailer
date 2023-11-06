@@ -8,7 +8,7 @@ from modules.paths import models_path
 from .face_parsing import test as face_parsing
 
 
-def inference(work_dir, target_image, template_image, size=288, template_image_seg=None):
+def inference(work_dir, method, target_image, template_image, size=288, template_image_seg=None):
     # Prepare work folders
     current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     root_dir = os.path.join(work_dir, current_time)
@@ -35,17 +35,27 @@ def inference(work_dir, target_image, template_image, size=288, template_image_s
         shutil.copy(template_image_seg, seg_makeup_dir)
 
     # Generate face annotation
-    face_parsing.evaluate(respth=seg_nonmakeup_dir, dspth=img_nonmakeup_dir, cp='79999_iter.pth')
-    if not template_image_seg_valid:
-        face_parsing.evaluate(respth=seg_makeup_dir, dspth=img_makeup_dir, cp='79999_iter.pth')
+    if method == 'SSAT':
+        face_parsing.evaluate(respth=seg_nonmakeup_dir, dspth=img_nonmakeup_dir, cp='79999_iter.pth')
+        if not template_image_seg_valid:
+            face_parsing.evaluate(respth=seg_makeup_dir, dspth=img_makeup_dir, cp='79999_iter.pth')
 
     # Transfer
-    run_cmd0 = f'accelerate launch "{os.path.join(os.path.dirname(os.path.abspath(__file__)), "SSAT", "test.py")}"'
-    run_cmd0 += f' "--dataroot={img_dir}"'
-    run_cmd0 += f' "--checkpoint_dir={os.path.join(models_path, "adetailer")}"'
-    run_cmd0 += f' "--result_dir={output_dir}"'
-    run_cmd0 += f' "--resize_size={size}"'
-    run_cmd0 += f' "--crop_size={size}"'
+    if method == 'SSAT':
+        run_cmd0 = f'accelerate launch "{os.path.join(os.path.dirname(os.path.abspath(__file__)), "SSAT", "test.py")}"'
+        run_cmd0 += f' "--dataroot={img_dir}"'
+        run_cmd0 += f' "--checkpoint_dir={os.path.join(models_path, "adetailer")}"'
+        run_cmd0 += f' "--result_dir={output_dir}"'
+        run_cmd0 += f' "--resize_size={size}"'
+        run_cmd0 += f' "--crop_size={size}"'
+    elif method == 'PSGAN':
+        run_cmd0 = f'accelerate launch "{os.path.join(os.path.dirname(os.path.abspath(__file__)), "PSGAN", "demo.py")}"'
+        run_cmd0 += f' "--source_path={target_image}"'
+        run_cmd0 += f' "--reference_dir={img_makeup_dir}"'
+        run_cmd0 += f' "--model_path={os.path.join(models_path, "adetailer", "G.pth")}"'
+        run_cmd0 += f' "--result_dir={output_dir}"'
+    else:
+        run_cmd0 = ""
     p = subprocess.run(run_cmd0, shell=True)
     if p.returncode == 0:
         return output_dir

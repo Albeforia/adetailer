@@ -791,7 +791,7 @@ class AfterDetailerScript(scripts.Script):
                 cropped_image_path = os.path.join(STATIC_TEMP_PATH, 'ad_crop.png')
                 cropped_images[j].save(cropped_image_path)
                 print(f"Makeup transfer with size {best_size}")
-                output_dir = makeup_transfer(STATIC_TEMP_PATH, cropped_image_path, args.ad_makeup_template, size=best_size)
+                output_dir = makeup_transfer(STATIC_TEMP_PATH, 'PSGAN', cropped_image_path, args.ad_makeup_template, size=best_size)
                 # output_image = Image.open(os.path.join(output_dir, 'out.png'))
                 output_image = cv2.cvtColor(
                     self._tint_image(os.path.join(output_dir, 'out.png'), args.ad_makeup_tint),

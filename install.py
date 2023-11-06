@@ -49,6 +49,9 @@ def install():
         ("rich", "13.0.0", None),
         # mediapipe
         ("protobuf", "3.20", "3.9999"),
+        # PSGAN
+        ("torchgpipe", None, None),
+        ("dlib", None, None),
     ]
 
     for pkg, low, high in deps:
