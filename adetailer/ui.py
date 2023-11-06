@@ -226,14 +226,14 @@ def one_ui_group(n: int, is_img2img: bool, webui_info: WebuiInfo):
                 elem_id=eid("ad_makeup_template"),
             )
             with gr.Row():
-                w.ad_makeup_network_size = gr.Slider(
-                    label="Makeup Network Size",
-                    minimum=128,
-                    maximum=512,
-                    step=16,
-                    value=288,
-                    elem_id=eid("ad_makeup_network_size"),
-                )
+                # w.ad_makeup_network_size = gr.Slider(
+                #     label="Makeup Network Size",
+                #     minimum=128,
+                #     maximum=512,
+                #     step=16,
+                #     value=288,
+                #     elem_id=eid("ad_makeup_network_size"),
+                # )
                 w.ad_makeup_edge_smoothing = gr.Slider(
                     label="Makeup Edge Smoothing",
                     minimum=1,

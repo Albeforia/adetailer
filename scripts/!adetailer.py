@@ -786,7 +786,8 @@ class AfterDetailerScript(scripts.Script):
             if makeup_enabled:
                 area = (bound_rects_squared[j][0], bound_rects_squared[j][1], bound_rects_squared[j][0]+bound_rects_squared[j][2], bound_rects_squared[j][1]+bound_rects_squared[j][3])
                 # best_size = max( 256, min(512, 16 * (bound_rects_squared[j][2] // 16)) )
-                best_size = args.ad_makeup_network_size
+                # best_size = args.ad_makeup_network_size
+                best_size = 288
                 cropped_images.append(processed.images[0].crop(area))
                 cropped_image_path = os.path.join(STATIC_TEMP_PATH, 'ad_crop.png')
                 cropped_images[j].save(cropped_image_path)
