@@ -50,6 +50,7 @@ def install():
         # mediapipe
         ("protobuf", "3.20", "3.9999"),
         # PSGAN
+        ("accelerate", None, None),
         ("torchgpipe", None, None),
         ("dlib", None, None),
     ]
