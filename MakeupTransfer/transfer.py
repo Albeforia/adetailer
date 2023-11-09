@@ -54,6 +54,12 @@ def inference(work_dir, method, target_image, template_image, size=288, template
         run_cmd0 += f' "--reference_dir={img_makeup_dir}"'
         run_cmd0 += f' "--model_path={os.path.join(models_path, "adetailer", "G.pth")}"'
         run_cmd0 += f' "--result_dir={output_dir}"'
+    elif method == 'EleGANt':
+        run_cmd0 = f'accelerate launch "{os.path.join(os.path.dirname(os.path.abspath(__file__)), "EleGANt", "demo.py")}"'
+        run_cmd0 += f' "--source-dir={img_nonmakeup_dir}"'
+        run_cmd0 += f' "--reference-dir={img_makeup_dir}"'
+        run_cmd0 += f' "--load_path={os.path.join(models_path, "adetailer", "sow_pyramid_a5_e3d2_remapped.pth")}"'
+        run_cmd0 += f' "--save_path={output_dir}"'
     else:
         run_cmd0 = ""
     p = subprocess.run(run_cmd0, shell=True)
