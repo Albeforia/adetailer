@@ -234,6 +234,12 @@ def one_ui_group(n: int, is_img2img: bool, webui_info: WebuiInfo):
                 #     value=288,
                 #     elem_id=eid("ad_makeup_network_size"),
                 # )
+                w.ad_makeup_joint_mode = gr.Radio(
+                    show_label=False,
+                    choices=['all', 'skin', 'lip', 'eye'],
+                    value='all',
+                    elem_id=eid("ad_makeup_joint_mode"),
+                )
                 w.ad_makeup_edge_smoothing = gr.Slider(
                     label="Makeup Edge Smoothing",
                     minimum=1,

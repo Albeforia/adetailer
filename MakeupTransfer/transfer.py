@@ -8,7 +8,7 @@ from modules.paths import models_path
 from .face_parsing import test as face_parsing
 
 
-def inference(work_dir, method, target_image, template_image, size=288, template_image_seg=None):
+def inference(work_dir, method, target_image, template_image, size=288, template_image_seg=None, joint='all'):
     # Prepare work folders
     current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     root_dir = os.path.join(work_dir, current_time)
@@ -58,6 +58,7 @@ def inference(work_dir, method, target_image, template_image, size=288, template
         run_cmd0 = f'accelerate launch "{os.path.join(os.path.dirname(os.path.abspath(__file__)), "EleGANt", "demo.py")}"'
         run_cmd0 += f' "--source-dir={img_nonmakeup_dir}"'
         run_cmd0 += f' "--reference-dir={img_makeup_dir}"'
+        run_cmd0 += f' "--joint_mode={joint}"'
         run_cmd0 += f' "--load_path={os.path.join(models_path, "adetailer", "sow_pyramid_a5_e3d2_remapped.pth")}"'
         run_cmd0 += f' "--save_path={output_dir}"'
     else:

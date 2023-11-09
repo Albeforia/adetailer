@@ -27,7 +27,20 @@ def main(config, args):
         imgA = Image.open(os.path.join(args.source_dir, imga_name)).convert('RGB')
         imgB = Image.open(os.path.join(args.reference_dir, imgb_name)).convert('RGB')
 
-        result = inference.transfer(imgA, imgB, postprocess=True)
+        if args.joint_mode == 'all':
+            result = inference.transfer(imgA, imgB, postprocess=True)
+        elif args.joint_mode == 'skin':
+            result = inference.joint_transfer(imgA, reference_skin=imgB, reference_lip=imgA, reference_eye=imgA,
+                                              postprocess=True)
+        elif args.joint_mode == 'lip':
+            result = inference.joint_transfer(imgA, reference_skin=imgA, reference_lip=imgB, reference_eye=imgA,
+                                              postprocess=True)
+        elif args.joint_mode == 'eye':
+            result = inference.joint_transfer(imgA, reference_skin=imgA, reference_lip=imgA, reference_eye=imgB,
+                                              postprocess=True)
+        else:
+            raise Exception()
+
         if result is None:
             continue
         imgA = np.array(imgA)
@@ -51,6 +64,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--source-dir", type=str, default="assets/images/non-makeup")
     parser.add_argument("--reference-dir", type=str, default="assets/images/makeup")
+    parser.add_argument("--joint_mode", type=str, default="all")
     parser.add_argument("--gpu", default='0', type=str, help="GPU id to use.")
 
     args = parser.parse_args()
