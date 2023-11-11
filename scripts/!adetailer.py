@@ -645,9 +645,10 @@ class AfterDetailerScript(scripts.Script):
             p._ad_disabled = True
 
     def _blend_images_with_rect(self, A, B, rect, N):
+        N = min(50, N)
         edge_mask = np.zeros(A.shape, dtype=np.float)
 
-        for i in range(N+1):
+        for i in range(N + 1):
             new_rect = (
                 rect[0] + i,
                 rect[1] + i,
@@ -656,9 +657,10 @@ class AfterDetailerScript(scripts.Script):
             )
             v = i * (1 / N)
             cv2.rectangle(edge_mask, new_rect[:2], (new_rect[0] + new_rect[2], new_rect[1] + new_rect[3]),
-                          (v,v,v), -1)
+                          (v, v, v), -1)
 
-        # edge_mask_img = Image.fromarray(edge_mask)
+        # print(f"Bound rect {rect}, {N}")
+        # edge_mask_img = Image.fromarray((edge_mask*255).astype(np.uint8))
         # edge_mask_img.save(os.path.join(STATIC_TEMP_PATH, 'ad_edge_mask.png'))
 
         blended = B * edge_mask + A * (1 - edge_mask)
@@ -672,6 +674,17 @@ class AfterDetailerScript(scripts.Script):
 
         img = (img * (tint_bgr / 255)).clip(0, 255).astype(np.uint8)
         return img
+
+    def _is_overlapping(self, image_mask, bound_rect):
+        img = np.array(image_mask)
+
+        x, y, w, h = bound_rect
+        roi = img[y:y + h, x:x + w]
+
+        if np.any(roi == 255):
+            return True
+        else:
+            return False
 
     def _postprocess_image_inner(
         self, p, pp, args: ADetailerArgs, *, n: int = 0
@@ -732,10 +745,11 @@ class AfterDetailerScript(scripts.Script):
 
         p2 = copy(i2i)
         # [MOD Albeforia] Find bounding boxes from processes masks
+        image_mask = images.resize_image(p.resize_mode, p.image_mask, p.width, p.height).convert('L')  # get input mask
         os.makedirs(STATIC_TEMP_PATH, exist_ok=True)
         makeup_enabled = args.ad_makeup_enable and args.ad_makeup_template
         bound_rects = []
-        bound_rects_squared = []    # SSAT needs squared input
+        bound_rects_squared = []  # SSAT needs squared input
         cropped_images = []
 
         def expand_rect_to_square(rect):
@@ -757,7 +771,7 @@ class AfterDetailerScript(scripts.Script):
             # [MOD Albeforia] Find bounding boxes from processes masks
             if makeup_enabled:
                 contours, _ = cv2.findContours(np.array(masks[j]), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-                bound_rects.append(cv2.boundingRect(contours[0]))   # x, y, w, h = boundRect
+                bound_rects.append(cv2.boundingRect(contours[0]))  # x, y, w, h = boundRect
                 bound_rects_squared.append(expand_rect_to_square(bound_rects[j]))
 
             p2.init_images[0] = self.ensure_rgb_image(p2.init_images[0])
@@ -784,28 +798,32 @@ class AfterDetailerScript(scripts.Script):
 
             # [MOD Albeforia] Crop images by bounding boxes
             if makeup_enabled:
-                area = (bound_rects_squared[j][0], bound_rects_squared[j][1], bound_rects_squared[j][0]+bound_rects_squared[j][2], bound_rects_squared[j][1]+bound_rects_squared[j][3])
-                # best_size = max( 256, min(512, 16 * (bound_rects_squared[j][2] // 16)) )
-                # best_size = args.ad_makeup_network_size
+                area = (bound_rects_squared[j][0], bound_rects_squared[j][1],
+                        bound_rects_squared[j][0] + bound_rects_squared[j][2],
+                        bound_rects_squared[j][1] + bound_rects_squared[j][3])
                 best_size = 288
                 cropped_images.append(processed.images[0].crop(area))
                 cropped_image_path = os.path.join(STATIC_TEMP_PATH, 'ad_crop.png')
                 cropped_images[j].save(cropped_image_path)
-                output_dir = makeup_transfer(STATIC_TEMP_PATH, 'EleGANt', cropped_image_path, args.ad_makeup_template,
-                                             size=best_size, joint=args.ad_makeup_joint_mode)
-                # output_image = Image.open(os.path.join(output_dir, 'out.png'))
-                output_image = cv2.cvtColor(
-                    self._tint_image(os.path.join(output_dir, 'out.png'), args.ad_makeup_tint),
-                    cv2.COLOR_BGR2RGB
-                )
-                original = processed.images[0].copy()
-                processed.images[0].paste(Image.fromarray(output_image), area)   # paste back
-                processed.images[0] = Image.fromarray(
-                    self._blend_images_with_rect(
-                        np.array(original, dtype=float), np.array(processed.images[0], dtype=float),
-                        bound_rects[j], args.ad_makeup_edge_smoothing
+                if self._is_overlapping(image_mask, bound_rects[j]):
+                    output_dir = makeup_transfer(STATIC_TEMP_PATH, 'EleGANt', cropped_image_path, args.ad_makeup_template,
+                                                 size=best_size, joint=args.ad_makeup_joint_mode)
+                    # output_image = Image.open(os.path.join(output_dir, 'out.png'))
+                    output_image = cv2.cvtColor(
+                        self._tint_image(os.path.join(output_dir, 'out.png'), args.ad_makeup_tint),
+                        cv2.COLOR_BGR2RGB
                     )
-                )
+                    original = processed.images[0].copy()
+                    processed.images[0].paste(Image.fromarray(output_image), area)  # paste back
+                    processed.images[0] = Image.fromarray(
+                        self._blend_images_with_rect(
+                            np.array(original, dtype=float), np.array(processed.images[0], dtype=float),
+                            bound_rects[j], args.ad_makeup_edge_smoothing
+                        )
+                    )
+                    p2.init_images = [processed.images[0]]
+                else:
+                    print(f"[-] ADetailer: Face rect does not overlap with input mask, skip makeup for face {j}")
 
         if processed is not None:
             pp.image = processed.images[0]
