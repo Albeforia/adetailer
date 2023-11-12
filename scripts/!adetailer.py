@@ -745,7 +745,10 @@ class AfterDetailerScript(scripts.Script):
 
         p2 = copy(i2i)
         # [MOD Albeforia] Find bounding boxes from processes masks
-        image_mask = images.resize_image(p.resize_mode, p.image_mask, p.width, p.height).convert('L')  # get input mask
+        if p.image_mask:
+            image_mask = images.resize_image(p.resize_mode, p.image_mask, p.width, p.height).convert('L')  # get input mask
+        else:
+            image_mask = None
         os.makedirs(STATIC_TEMP_PATH, exist_ok=True)
         makeup_enabled = args.ad_makeup_enable and args.ad_makeup_template
         bound_rects = []
@@ -805,7 +808,7 @@ class AfterDetailerScript(scripts.Script):
                 cropped_images.append(processed.images[0].crop(area))
                 cropped_image_path = os.path.join(STATIC_TEMP_PATH, 'ad_crop.png')
                 cropped_images[j].save(cropped_image_path)
-                if self._is_overlapping(image_mask, bound_rects[j]):
+                if not image_mask or self._is_overlapping(image_mask, bound_rects[j]):
                     output_dir = makeup_transfer(STATIC_TEMP_PATH, 'EleGANt', cropped_image_path, args.ad_makeup_template,
                                                  size=best_size, joint=args.ad_makeup_joint_mode)
                     # output_image = Image.open(os.path.join(output_dir, 'out.png'))
