@@ -863,7 +863,10 @@ class AfterDetailerScript(scripts.Script):
             for n, args in enumerate(arg_list):
                 if args.ad_model == "None":
                     continue
+                start_timer = timeit.default_timer()
                 is_processed |= self._postprocess_image_inner(p, pp, args, n=n)
+                end_timer = timeit.default_timer()
+                print(f"[-] ADetailer: _postprocess_image_inner() - {(end_timer - start_timer) * 1000:.2f} ms")
 
         if is_processed and not getattr(p, "_ad_skip_img2img", False):
             self.save_image(
