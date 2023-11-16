@@ -54,6 +54,7 @@ from modules.sd_samplers import all_samplers
 from modules.shared import cmd_opts, opts, state
 
 # [ADD Albeforia]
+import timeit
 from PIL import Image
 from MakeupTransfer import inference as makeup_transfer
 from modules.paths_internal import script_path
@@ -745,7 +746,7 @@ class AfterDetailerScript(scripts.Script):
 
         p2 = copy(i2i)
         # [MOD Albeforia] Find bounding boxes from processes masks
-        if p.image_mask:
+        if hasattr(p, 'image_mask') and p.image_mask:
             image_mask = images.resize_image(p.resize_mode, p.image_mask, p.width, p.height).convert('L')  # get input mask
         else:
             image_mask = None
@@ -773,9 +774,12 @@ class AfterDetailerScript(scripts.Script):
 
             # [MOD Albeforia] Find bounding boxes from processes masks
             if makeup_enabled:
+                start_timer = timeit.default_timer()
                 contours, _ = cv2.findContours(np.array(masks[j]), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
                 bound_rects.append(cv2.boundingRect(contours[0]))  # x, y, w, h = boundRect
                 bound_rects_squared.append(expand_rect_to_square(bound_rects[j]))
+                end_timer = timeit.default_timer()
+                print(f"[-] ADetailer: Face bound rect - {(end_timer - start_timer) * 1000:.2f} ms")
 
             p2.init_images[0] = self.ensure_rgb_image(p2.init_images[0])
             self.i2i_prompts_replace(p2, ad_prompts, ad_negatives, j)
@@ -809,9 +813,14 @@ class AfterDetailerScript(scripts.Script):
                 cropped_image_path = os.path.join(STATIC_TEMP_PATH, 'ad_crop.png')
                 cropped_images[j].save(cropped_image_path)
                 if not image_mask or self._is_overlapping(image_mask, bound_rects[j]):
+                    start_timer = timeit.default_timer()
                     output_dir = makeup_transfer(STATIC_TEMP_PATH, 'EleGANt', cropped_image_path, args.ad_makeup_template,
                                                  size=best_size, joint=args.ad_makeup_joint_mode)
+                    end_timer = timeit.default_timer()
+                    print(f"[-] ADetailer: Makeup transfer - {(end_timer - start_timer) * 1000:.2f} ms")
                     # output_image = Image.open(os.path.join(output_dir, 'out.png'))
+
+                    start_timer = timeit.default_timer()
                     output_image = cv2.cvtColor(
                         self._tint_image(os.path.join(output_dir, 'out.png'), args.ad_makeup_tint),
                         cv2.COLOR_BGR2RGB
@@ -824,6 +833,8 @@ class AfterDetailerScript(scripts.Script):
                             bound_rects[j], args.ad_makeup_edge_smoothing
                         )
                     )
+                    end_timer = timeit.default_timer()
+                    print(f"[-] ADetailer: Makeup postprocess - {(end_timer - start_timer) * 1000:.2f} ms")
                     p2.init_images = [processed.images[0]]
                 else:
                     print(f"[-] ADetailer: Face rect does not overlap with input mask, skip makeup for face {j}")

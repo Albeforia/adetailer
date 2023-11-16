@@ -9,11 +9,11 @@ from torchvision.utils import save_image, make_grid
 import torch.nn.init as init
 from tqdm import tqdm
 
-from models.modules.pseudo_gt import expand_area
-from models.model import get_discriminator, get_generator, vgg16
-from models.loss import GANLoss, MakeupLoss, ComposePGT, AnnealingComposePGT
+from ..models.modules.pseudo_gt import expand_area
+from ..models.model import get_discriminator, get_generator, vgg16
+from ..models.loss import GANLoss, MakeupLoss, ComposePGT, AnnealingComposePGT
 
-from training.utils import plot_curves
+from .utils import plot_curves
 
 class Solver():
     def __init__(self, config, args, logger=None, inference=False):

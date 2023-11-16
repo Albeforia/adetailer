@@ -6,9 +6,9 @@ import torch
 import torch.nn.functional as F
 from torchvision.transforms import ToPILImage
 
-from training.solver import Solver
-from training.preprocess import PreProcess
-from models.modules.pseudo_gt import expand_area, mask_blend
+from .solver import Solver
+from .preprocess import PreProcess
+from ..models.modules.pseudo_gt import expand_area, mask_blend
 
 class InputSample:
     def __init__(self, inputs, apply_mask=None):

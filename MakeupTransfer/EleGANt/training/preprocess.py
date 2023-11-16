@@ -9,8 +9,8 @@ from torchvision import transforms
 from torchvision.transforms import functional
 sys.path.append('.')
 
-import faceutils as futils
-from training.config import get_config
+from ..faceutils import mask, dlib
+from .config import get_config
 
 class PreProcess:
 
@@ -33,7 +33,7 @@ class PreProcess:
         fix = np.concatenate([ys, xs], axis=0) 
         self.fix = torch.Tensor(fix) #(136, h, w)
         if need_parser:
-            self.face_parse = futils.mask.FaceParser(device=device)
+            self.face_parse = mask.FaceParser(device=device)
 
         self.up_ratio    = config.PREPROCESS.UP_RATIO
         self.down_ratio  = config.PREPROCESS.DOWN_RATIO
@@ -85,12 +85,12 @@ class PreProcess:
     
     ############################## Landmarks Process ##############################
     def lms_process(self, image:Image):
-        face = futils.dlib.detect(image)
+        face = dlib.detect(image)
         # face: rectangles, List of rectangles of face region: [(left, top), (right, bottom)]
         if not face:
             return None
         face = face[0]
-        lms = futils.dlib.landmarks(image, face) * self.img_size / image.width # scale to fit self.img_size
+        lms = dlib.landmarks(image, face) * self.img_size / image.width # scale to fit self.img_size
         # lms: narray, the position of 68 key points, (68 ,2)
         lms = torch.IntTensor(lms.round()).clamp_max_(self.img_size - 1)
         # distinguish upper and lower lips 
@@ -131,14 +131,14 @@ class PreProcess:
         '''
         return: image: Image, (H, W), mask: tensor, (1, H, W)
         '''
-        face = futils.dlib.detect(image)
+        face = dlib.detect(image)
         # face: rectangles, List of rectangles of face region: [(left, top), (right, bottom)]
         if not face:
             return None, None, None
 
         face_on_image = face[0]
         if is_crop:
-            image, face, crop_face = futils.dlib.crop(
+            image, face, crop_face = dlib.crop(
                 image, face_on_image, self.up_ratio, self.down_ratio, self.width_ratio)
         else:
             face = face[0]; crop_face = None
@@ -155,7 +155,7 @@ class PreProcess:
             (self.img_size, self.img_size),
             mode="nearest").squeeze(0).long() #(1, H, W)
 
-        lms = futils.dlib.landmarks(image, face) * self.img_size / image.width # scale to fit self.img_size
+        lms = dlib.landmarks(image, face) * self.img_size / image.width # scale to fit self.img_size
         # lms: narray, the position of 68 key points, (68 ,2)
         lms = torch.IntTensor(lms.round()).clamp_max_(self.img_size - 1)
         # distinguish upper and lower lips 

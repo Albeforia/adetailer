@@ -3,9 +3,13 @@ import datetime
 import os
 import shutil
 import subprocess
+import sys
 
 from modules.paths import models_path
+from .EleGANt import inference as elegant
 from .face_parsing import test as face_parsing
+
+python = sys.executable
 
 
 def inference(work_dir, method, target_image, template_image, size=288, template_image_seg=None, joint='all'):
@@ -42,28 +46,22 @@ def inference(work_dir, method, target_image, template_image, size=288, template
 
     # Transfer
     if method == 'SSAT':
-        run_cmd0 = f'accelerate launch "{os.path.join(os.path.dirname(os.path.abspath(__file__)), "SSAT", "test.py")}"'
-        run_cmd0 += f' "--dataroot={img_dir}"'
-        run_cmd0 += f' "--checkpoint_dir={os.path.join(models_path, "adetailer")}"'
-        run_cmd0 += f' "--result_dir={output_dir}"'
-        run_cmd0 += f' "--resize_size={size}"'
-        run_cmd0 += f' "--crop_size={size}"'
+        run_cmd = [python, f'{os.path.join("extensions", "adetailer", "MakeupTransfer", "SSAT", "test.py")}']
+        run_cmd.append(f'--dataroot={img_dir}')
+        run_cmd.append(f'--checkpoint_dir={os.path.join(models_path, "adetailer")}')
+        run_cmd.append(f'--result_dir={output_dir}')
+        run_cmd.append(f'--resize_size={size}')
+        run_cmd.append(f'--crop_size={size}')
     elif method == 'PSGAN':
-        run_cmd0 = f'accelerate launch "{os.path.join(os.path.dirname(os.path.abspath(__file__)), "PSGAN", "demo.py")}"'
-        run_cmd0 += f' "--source_path={target_image}"'
-        run_cmd0 += f' "--reference_dir={img_makeup_dir}"'
-        run_cmd0 += f' "--model_path={os.path.join(models_path, "adetailer", "G.pth")}"'
-        run_cmd0 += f' "--result_dir={output_dir}"'
+        run_cmd = ""  # not used, replaced by EleGANt
     elif method == 'EleGANt':
-        run_cmd0 = f'accelerate launch "{os.path.join(os.path.dirname(os.path.abspath(__file__)), "EleGANt", "demo.py")}"'
-        run_cmd0 += f' "--source-dir={img_nonmakeup_dir}"'
-        run_cmd0 += f' "--reference-dir={img_makeup_dir}"'
-        run_cmd0 += f' "--joint_mode={joint}"'
-        run_cmd0 += f' "--load_path={os.path.join(models_path, "adetailer", "sow_pyramid_a5_e3d2_remapped.pth")}"'
-        run_cmd0 += f' "--save_path={output_dir}"'
+        elegant.transfer_inference(source_dir=img_nonmakeup_dir, reference_dir=img_makeup_dir, joint_mode=joint,
+                                   load_path=os.path.join(models_path, "adetailer", "sow_pyramid_a5_e3d2_remapped.pth"),
+                                   save_path=output_dir)
+        return output_dir
     else:
-        run_cmd0 = ""
-    p = subprocess.run(run_cmd0, shell=True)
+        run_cmd = ""
+    p = subprocess.run(run_cmd, shell=True)
     if p.returncode == 0:
         return output_dir
     return None
